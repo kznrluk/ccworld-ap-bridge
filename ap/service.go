@@ -5,13 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/concrnt/ccworld-ap-bridge/internal"
 	"log"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
 	"github.com/concrnt/ccworld-ap-bridge/apclient"
@@ -21,7 +20,6 @@ import (
 	"github.com/concrnt/ccworld-ap-bridge/world"
 	"github.com/totegamma/concurrent/client"
 	"github.com/totegamma/concurrent/core"
-	"github.com/totegamma/concurrent/x/jwt"
 	commitStore "github.com/totegamma/concurrent/x/store"
 )
 
@@ -41,18 +39,6 @@ func printJson(v interface{}) {
 		return
 	}
 	fmt.Println(string(b))
-}
-
-func createToken(domain, ccid, priv string) (string, error) {
-	token, err := jwt.Create(jwt.Claims{
-		JWTID:          uuid.New().String(),
-		IssuedAt:       strconv.FormatInt(time.Now().Unix(), 10),
-		ExpirationTime: strconv.FormatInt(time.Now().Add(5*time.Minute).Unix(), 10),
-		Audience:       domain,
-		Issuer:         ccid,
-		Subject:        "concrnt",
-	}, priv)
-	return token, err
 }
 
 func NewService(
@@ -321,7 +307,7 @@ func (s *Service) Inbox(ctx context.Context, object types.ApObject, inboxId stri
 			targetID = ref.CcObjectID
 		}
 
-		token, err := createToken(s.config.FQDN, s.config.ProxyCCID, s.config.ProxyPriv)
+		token, err := internal.CreateAuthToken(s.config.FQDN, s.config.ProxyCCID, s.config.ProxyPriv)
 		if err != nil {
 			span.RecordError(err)
 			return types.ApObject{}, errors.Wrap(err, "ap/service/inbox/like CreateToken")

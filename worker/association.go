@@ -3,33 +3,18 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"github.com/concrnt/ccworld-ap-bridge/internal"
 	"log"
 	"slices"
-	"strconv"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
-
-	"github.com/totegamma/concurrent/client"
-	"github.com/totegamma/concurrent/core"
-	"github.com/totegamma/concurrent/x/jwt"
 
 	"github.com/concrnt/ccworld-ap-bridge/types"
 	"github.com/concrnt/ccworld-ap-bridge/world"
+	"github.com/totegamma/concurrent/client"
+	"github.com/totegamma/concurrent/core"
 )
-
-func createToken(domain, ccid, priv string) (string, error) {
-	token, err := jwt.Create(jwt.Claims{
-		JWTID:          uuid.New().String(),
-		IssuedAt:       strconv.FormatInt(time.Now().Unix(), 10),
-		ExpirationTime: strconv.FormatInt(time.Now().Add(5*time.Minute).Unix(), 10),
-		Audience:       domain,
-		Issuer:         ccid,
-		Subject:        "concrnt",
-	}, priv)
-	return token, err
-}
 
 func (w *Worker) StartAssociationWorker() {
 
@@ -158,7 +143,7 @@ func (w *Worker) StartAssociationWorker() {
 					continue
 				}
 
-				token, err := createToken(messageAuthor.Domain, w.config.ProxyCCID, w.config.ProxyPriv)
+				token, err := internal.CreateAuthToken(messageAuthor.Domain, w.config.ProxyCCID, w.config.ProxyPriv)
 				if err != nil {
 					log.Printf("worker/association createToken %v", err)
 					continue
@@ -262,7 +247,7 @@ func (w *Worker) StartAssociationWorker() {
 					continue
 				}
 
-				token, err := createToken(targetEntity.Domain, w.config.ProxyCCID, w.config.ProxyPriv)
+				token, err := internal.CreateAuthToken(targetEntity.Domain, w.config.ProxyCCID, w.config.ProxyPriv)
 				if err != nil {
 					log.Printf("worker/association/delete createToken %v", err)
 					continue
