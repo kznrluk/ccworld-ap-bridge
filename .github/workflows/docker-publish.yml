@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Docker
 
 on:
   push:
@@ -11,6 +11,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
 
     permissions:
       contents: read
@@ -21,12 +23,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-tags: true
+          fetch-tags: ${{ github.ref_name }}
 
-      - name: Set up Docker Buildx
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Docker buildx
         uses: docker/setup-buildx-action@v2
-        with:
-          install: true
 
       - name: Log into registry ${{ env.REGISTRY }}
         if: github.event_name != 'pull_request'
@@ -45,8 +48,17 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=${{ env.TAG }}
-            type=raw,value=latest,enable=true
+            type=raw,value=latest,enable=${{ !contains(env.TAG, 'beta') }}
+            type=semver,pattern={{raw}}
+
+      - name: Set platforms based on tag
+        id: set-platforms
+        run: |
+          if [[ "${{ env.TAG }}" == *"beta"* ]]; then
+            echo "PLATFORMS=linux/amd64" >> $GITHUB_ENV
+          else
+            echo "PLATFORMS=linux/amd64,linux/arm64,linux/arm64/v8" >> $GITHUB_ENV
+          fi
 
       - name: Build and push Docker image
         id: build-and-push
@@ -55,10 +67,9 @@ jobs:
           context: .
           file: ./cmd/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
-          platforms: linux/amd64
+          platforms: ${{ env.PLATFORMS }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            VERSION=${{ env.TAG }}
+          build-args: VERSION=${{env.TAG}}
