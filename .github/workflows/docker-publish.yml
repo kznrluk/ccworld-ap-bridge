@@ -57,7 +57,7 @@ jobs:
           if [[ "${{ env.TAG }}" == *"beta"* ]]; then
             echo "PLATFORMS=linux/amd64" >> $GITHUB_ENV
           else
-            echo "PLATFORMS=linux/amd64,linux/arm64,linux/arm64/v8" >> $GITHUB_ENV
+            echo "PLATFORMS=linux/amd64" >> $GITHUB_ENV
           fi
 
       - name: Build and push Docker image

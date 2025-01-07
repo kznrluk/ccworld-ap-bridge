@@ -235,7 +235,7 @@ func (w *Worker) StartMessageWorker() {
 								continue
 							}
 
-							log.Printf("[DEBUG] userID=%s unmarshal core.Event => Type=%s, Document=%s", publisherUserID, streamEvent.Type, streamEvent.Document)
+							log.Printf("[DEBUG] userID=%s unmarshal Document=%s", publisherUserID, streamEvent.Document)
 
 							if streamEvent.Document == "" {
 								log.Printf("[DEBUG] userID=%s empty streamEvent.Document, skip", publisherUserID)
