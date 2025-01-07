@@ -214,7 +214,7 @@ func (s *Service) Note(ctx context.Context, id string) (types.ApObject, error) {
 	ctx, span := tracer.Start(ctx, "Ap.Service.Note")
 	defer span.End()
 
-	note, err := s.bridge.MessageToNote(ctx, id)
+	note, err := s.bridge.MessageToNote(ctx, id, nil)
 	if err != nil {
 		span.RecordError(err)
 		return types.ApObject{}, err

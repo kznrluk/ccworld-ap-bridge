@@ -3,6 +3,8 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"github.com/concrnt/ccworld-ap-bridge/internal"
+	"github.com/totegamma/concurrent/client"
 	"log"
 	"slices"
 	"time"
@@ -175,13 +177,21 @@ func (w *Worker) StartMessageWorker() {
 								continue
 							}
 
+							token, err := internal.CreateAuthToken(w.config.FQDN, w.config.ProxyCCID, w.config.ProxyPriv)
+							if err != nil {
+								log.Printf("worker/message/%v CreateAuthToken %v", publisherUserID, err)
+								continue
+							}
+
 							var object *types.ApObject
 
 							switch document.Type {
 							case "message":
 								{
 									messageID := streamEvent.Item.ResourceID
-									note, err := w.bridge.MessageToNote(ctx, messageID)
+									note, err := w.bridge.MessageToNote(ctx, messageID, &client.Options{
+										AuthToken: token,
+									})
 									if err != nil {
 										log.Printf("worker/message/%v MessageToNote %v", publisherUserID, err)
 										continue
@@ -195,7 +205,7 @@ func (w *Worker) StartMessageWorker() {
 											Actor:   "https://" + w.config.FQDN + "/ap/acct/" + publisherUserID,
 											Content: "",
 											Object:  note.Object,
-											To:      []string{"https://www.w3.org/ns/activitystreams#Public"},
+											To:      note.To,
 										}
 										object = &announce
 									} else {
@@ -204,7 +214,7 @@ func (w *Worker) StartMessageWorker() {
 											Type:    "Create",
 											ID:      "https://" + w.config.FQDN + "/ap/note/" + messageID + "/activity",
 											Actor:   "https://" + w.config.FQDN + "/ap/acct/" + publisherUserID,
-											To:      []string{"https://www.w3.org/ns/activitystreams#Public"},
+											To:      note.To,
 											Object:  note,
 										}
 										object = &create

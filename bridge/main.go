@@ -376,11 +376,11 @@ CHECK_VISIBILITY:
 	return created.Content, nil
 }
 
-func (s Service) MessageToNote(ctx context.Context, messageID string) (types.ApObject, error) {
+func (s Service) MessageToNote(ctx context.Context, messageID string, options *client.Options) (types.ApObject, error) {
 	ctx, span := tracer.Start(ctx, "MessageToNote")
 	defer span.End()
 
-	message, err := s.client.GetMessage(ctx, s.config.FQDN, messageID, nil)
+	message, err := s.client.GetMessage(ctx, s.config.FQDN, messageID, options)
 	if err != nil {
 		span.RecordError(err)
 		return types.ApObject{}, errors.New("message not found")
@@ -456,6 +456,14 @@ func (s Service) MessageToNote(ctx context.Context, messageID string) (types.ApO
 		attachments = append(attachments, attachment)
 	}
 
+	// TODO: 今の実装はキーの有無で判断しているがサーバー側の実装に依存するため要修正
+	isPrivate := message.PolicyDefaults != nil && *message.PolicyDefaults != ""
+
+	toField := []string{"https://www.w3.org/ns/activitystreams#Public"}
+	if isPrivate {
+		toField = []string{"https://" + s.config.FQDN + "/ap/acct/" + message.Author + "/followers"}
+	}
+
 	// convert markdown to html
 	extensions := parser.CommonExtensions | parser.NoEmptyLineBeforeBlock
 	p := parser.NewWithExtensions(extensions)
@@ -480,7 +488,7 @@ func (s Service) MessageToNote(ctx context.Context, messageID string) (types.ApO
 			Content:        htmlText,
 			MisskeyContent: text,
 			Published:      document.SignedAt.Format(time.RFC3339),
-			To:             []string{"https://www.w3.org/ns/activitystreams#Public"},
+			To:             toField,
 			Tag:            emojis,
 			Attachment:     attachments,
 		}, nil
@@ -539,7 +547,7 @@ func (s Service) MessageToNote(ctx context.Context, messageID string) (types.ApO
 			Content:        htmlText,
 			MisskeyContent: text,
 			InReplyTo:      ref,
-			To:             []string{"https://www.w3.org/ns/activitystreams#Public"},
+			To:             toField,
 			CC:             CC,
 			Tag:            emojis,
 			Attachment:     attachments,
@@ -598,7 +606,7 @@ func (s Service) MessageToNote(ctx context.Context, messageID string) (types.ApO
 			Content:        htmlText,
 			MisskeyContent: text,
 			QuoteURL:       ref,
-			To:             []string{"https://www.w3.org/ns/activitystreams#Public"},
+			To:             toField,
 		}, nil
 	} else {
 		return types.ApObject{}, errors.New("invalid schema")
